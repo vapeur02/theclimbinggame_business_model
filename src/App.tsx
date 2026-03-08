@@ -66,13 +66,64 @@ const HARDCODED_SCENARIOS = [
     id: "lean_bcn",
     name: "Lean BCN Launch",
     icon: "zap",
-    desc: "Consumer + Sponsor in BCN",
+    desc: "Consumer + Sponsor in BCN — bootstrapped reality",
     models: ["consumer_sub", "sponsorship"],
     cities: ["barcelona"],
-    insight: "This scenario simulates a highly bootstrapped launch solely in Barcelona. By doing the dev work in-house or with a lean team, we cap monthly costs around €2,000. Marketing relies entirely on organic gym relationships and local community building (€300/mo). We combine a basic €5.99 consumer sub with 2 local sponsorships per year to hit break-even before month 24.",
+    insight: "Fully bootstrapped: 2–3 devs vibe-coding, €200/mo infra (Supabase + APIs), zero paid marketing. Growth is entirely organic — gym visits, Charlotte's network, and word-of-mouth among the BCN climbing community. We assume 1 small local sponsorship deal in year 1 (~€750). Break-even only happens if the community grows steadily AND we stay disciplined on costs. This is the honest floor scenario.",
     overrides: {
-      consumer_sub: { dev: 1200, marketing: 200, growth: 0.08, conversion: 0.04, price: 5.99 },
-      sponsorship: { dev: 800, marketing: 100, deals1: 2, val1: 1500 }
+      consumer_sub: {
+        dev: 200,           // infra only — no salaries, vibe-coding in-house
+        marketing: 50,      // essentially zero — occasional flyer, sticker run
+        growth: 0.06,       // realistic cold-start organic growth
+        activation: 0.50,   // half of signups actually log regularly
+        conversion: 0.035,  // 3.5% free → paid, conservative
+        price: 5.99,        // accessible price point
+        churn: 0.07,        // slightly high early — product still maturing
+        expansion: 2        // modest yr2 expansion as word spreads
+      },
+      sponsorship: {
+        dev: 0,             // no extra dev for sponsorship track
+        marketing: 50,      // Charlotte's outreach costs (travel, samples)
+        deals1: 1,          // 1 local deal yr1 (e.g. a BCN gym or local brand)
+        val1: 750,          // small deal — exposure play, not revenue play
+        deals2: 4,          // yr2: Charlotte's European network activates
+        val2: 3500,         // mid-tier brand deals (La Sportiva, Friction Labs type)
+        deals3: 9,          // yr3: established track record
+        val3: 6000,         // proper brand partnerships
+        content: 100        // content production (reels, athlete collabs)
+      }
+    }
+  },
+  {
+    id: "charlotte_network",
+    name: "Charlotte's Network",
+    icon: "users",
+    desc: "Sponsorship-led — unlocks at 12mo with European brand reach",
+    models: ["sponsorship", "consumer_sub"],
+    cities: ["barcelona"],
+    insight: "Same lean cost base, but bets heavily on Charlotte's European-level connections kicking in at month 12. By then we have enough users (500–1K) to show brands a real, engaged climbing audience. Targets: 1 European gear brand (La Sportiva, Scarpa, Mammut tier), 2–3 mid-size deals by month 18. Consumer sub runs quietly in the background. This scenario only works if Charlotte actively owns the brand outreach — it's not passive.",
+    overrides: {
+      sponsorship: {
+        dev: 200,
+        marketing: 150,     // Charlotte traveling to comps, brand events
+        deals1: 1,
+        val1: 750,
+        deals2: 6,          // European reach unlocks: 6 deals in yr2
+        val2: 5000,         // real brand budgets at European level
+        deals3: 14,
+        val3: 9000,
+        content: 300        // pro athlete content, comp coverage
+      },
+      consumer_sub: {
+        dev: 0,
+        marketing: 0,
+        growth: 0.07,
+        activation: 0.55,
+        conversion: 0.03,   // lower — sponsorship app = less premium urgency
+        price: 4.99,
+        churn: 0.06,
+        expansion: 3
+      }
     }
   }
 ];
