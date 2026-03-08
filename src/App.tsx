@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// 👇 YOUR SUPABASE CREDENTIALS ARE NOW HARDCODED HERE:
+// 👇 YOUR SUPABASE CREDENTIALS
 const supabaseUrl = "https://pqqwmiwmuvcnixgmxkof.supabase.co";
 const supabaseKey = "sb_publishable_YcGeop_U8cCprzsEu4Z21w_lIqNUrgx";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -21,7 +21,7 @@ const T = {
 };
 
 /* ═══ ICONS ═══ */
-const SVG={layers:"M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",store:"M3 9l1-4h16l1 4M3 9h18M3 9v10a1 1 0 001 1h16a1 1 0 001-1V9M9 21V13h6v8",users:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",database:"M12 2C6.48 2 2 3.79 2 6s4.48 4 10 4 10-1.79 10-4-4.48-4-10-4zM2 6v6c0 2.21 4.48 4 10 4s10-1.79 10-4V6M2 12v6c0 2.21 4.48 4 10 4s10-1.79 10-4v-6",trending:"M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",zap:"M13 2L3 14h9l-1 8 10-12h-9l1-8z",message:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"};
+const SVG={layers:"M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",store:"M3 9l1-4h16l1 4M3 9h18M3 9v10a1 1 0 001 1h16a1 1 0 001-1V9M9 21V13h6v8",users:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",database:"M12 2C6.48 2 2 3.79 2 6s4.48 4 10 4 10-1.79 10-4-4.48-4-10-4zM2 6v6c0 2.21 4.48 4 10 4s10-1.79 10-4V6M2 12v6c0 2.21 4.48 4 10 4s10-1.79 10-4v-6",trending:"M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",zap:"M13 2L3 14h9l-1 8 10-12h-9l1-8z",message:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z",save:"M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8"};
 const Ic=({n,s=20,c=T.text,w=1.5})=>(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round"><path d={SVG[n]||SVG.layers}/></svg>);
 
 /* ═══ FORMAT ═══ */
@@ -60,8 +60,8 @@ const RANGES={
 
 const mkDef=(cks,mid)=>{const tam=cks.reduce((s,c)=>s+CITIES[c].tam,0);const gyms=cks.reduce((s,c)=>s+CITIES[c].gyms,0);const R=RANGES[mid];const d={};Object.entries(R).forEach(([k,r])=>{d[k]=Math.round(((r.lo+r.hi)/2)*1000)/1000;});d.tam=tam;if(mid==="b2b_saas")d.gyms=gyms;if(mid==="marketplace"){d.guides=Math.max(3,Math.floor(gyms*0.8));d.coaching=Math.floor(tam/500);d.gearTx=Math.floor(tam/750);d.coachPrice=60;d.gearPrice=45;}return d;};
 
-/* ═══ SCENARIOS DATA ═══ */
-const SCENARIOS = [
+/* ═══ PRE-BUILT SCENARIOS ═══ */
+const HARDCODED_SCENARIOS = [
   {
     id: "lean_bcn",
     name: "Lean BCN Launch",
@@ -77,7 +77,7 @@ const SCENARIOS = [
   }
 ];
 
-/* ═══ PROJECTION ═══ */
+/* ═══ PROJECTION MATH ═══ */
 function project(id,a,numCities=1){
   const out=[];let users=0,paid=0;
   const cityMktMult = 1 + (numCities - 1) * 0.4;  
@@ -164,28 +164,40 @@ export default function App(){
   const [tab,setTab]=useState("chart");
   const [activeScenario, setActiveScenario]=useState(null);
   
-  // REAL-TIME STATE FOR COMMENTS
+  // LIVE DATABASE STATES
   const [comments, setComments] = useState([]);
+  const [savedViews, setSavedViews] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [newViewName, setNewViewName] = useState("");
   const [isPosting, setIsPosting] = useState(false);
+  const [isSavingView, setIsSavingView] = useState(false);
 
   useEffect(() => {
-    fetchComments();
-    const channel = supabase
-      .channel('schema-db-changes')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, payload => {
-        setComments(current => [...current, payload.new]);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    fetchData();
+    
+    // Listen for new comments
+    const channel1 = supabase.channel('comments-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, payload => {
+      setComments(current => [...current, payload.new]);
+    }).subscribe();
+
+    // Listen for new saved views
+    const channel2 = supabase.channel('views-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'saved_views' }, payload => {
+      setSavedViews(current => [...current, payload.new]);
+    }).subscribe();
+
+    return () => { supabase.removeChannel(channel1); supabase.removeChannel(channel2); };
   }, []);
 
-  const fetchComments = async () => {
-    const { data, error } = await supabase.from('comments').select('*').order('created_at', { ascending: true });
-    if (!error && data) setComments(data);
+  const fetchData = async () => {
+    const { data: cData } = await supabase.from('comments').select('*').order('created_at', { ascending: true });
+    if (cData) setComments(cData);
+    
+    const { data: vData } = await supabase.from('saved_views').select('*').order('created_at', { ascending: true });
+    if (vData) setSavedViews(vData);
   };
 
-  const applyScenario = (s) => {
+  /* ═══ ACTIONS ═══ */
+  const applyHardcodedScenario = (s) => {
     setSelM(s.models);
     setSelC(s.cities);
     const newAsmpt = {};
@@ -199,6 +211,31 @@ export default function App(){
     setActiveScenario(s);
   };
 
+  const applySavedView = (view) => {
+    setSelM(view.state_data.models);
+    setSelC(view.state_data.cities);
+    setAsmpt(view.state_data.asmpt);
+    setActiveScenario({ id: view.id, name: view.name, insight: view.description });
+  };
+
+  const handleSaveView = async () => {
+    if(!newViewName.trim()) return;
+    setIsSavingView(true);
+    
+    // Bundle up everything on the screen
+    const stateData = { models: selM, cities: selC, asmpt: asmpt };
+    const desc = `${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")} in ${selC.map(c=>CITIES[c].name).join(", ")}. Saved on ${new Date().toLocaleDateString()}`;
+    
+    const { error } = await supabase.from('saved_views').insert([{ 
+      name: newViewName, 
+      description: desc,
+      state_data: stateData 
+    }]);
+    
+    setIsSavingView(false);
+    if (!error) { setNewViewName(""); } else { alert("Error saving view: " + error.message); }
+  };
+
   const toggleM=id=>{setActiveScenario(null);setSelM(p=>{const n=p.includes(id)?p.filter(x=>x!==id):[...p,id].slice(0,3);return n.length?n:[id];});};
   const toggleC=ck=>{
     setActiveScenario(null);
@@ -208,12 +245,12 @@ export default function App(){
   const upd=useCallback((mid,k,v)=>{setActiveScenario(null);setAsmpt(p=>({...p,[mid]:{...p[mid],[k]:v}}));},[]);
   
   const handleAddComment = async () => {
-    if(!newComment.trim() || !supabaseUrl.includes('supabase.co')) return;
+    if(!newComment.trim()) return;
     setIsPosting(true);
     const currentScenarioLabel = activeScenario ? `Scenario: ${activeScenario.name}` : `${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")} in ${selC.map(c=>CITIES[c].name).join(", ")}`;
     const { error } = await supabase.from('comments').insert([{ author: "Founder", role: "Admin", text: newComment, scenario: currentScenarioLabel }]);
     setIsPosting(false);
-    if (!error) { setNewComment(""); } else { alert("Supabase Error: " + error.message); }
+    if (!error) { setNewComment(""); } else { alert("Error saving comment."); }
   };
 
   const prim=MODELS.find(m=>m.id===selM[0]);
@@ -247,25 +284,44 @@ export default function App(){
         </button>
       </div>
 
-      {/* QUICK SCENARIOS */}
+      {/* QUICK SCENARIOS & SAVED VIEWS */}
       <div style={{marginBottom:16, paddingBottom:16, borderBottom:`1px solid ${T.borderLight}`}}>
-        <div style={{...lbl,fontSize:10,marginBottom:8}}>Quick Scenarios</div>
-        <div style={{display:"flex", gap:10}}>
-          {SCENARIOS.map(s => (
-            <button key={s.id} onClick={() => applyScenario(s)} style={{display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:8, background:activeScenario?.id === s.id ? T.text : T.bgSub, color:activeScenario?.id === s.id ? T.bg : T.text, border:`1px solid ${activeScenario?.id === s.id ? T.text : T.border}`, cursor:"pointer", fontSize:13, fontWeight:600, transition:"all 0.15s"}}>
+        <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:8}}>
+          <div style={{...lbl,marginBottom:0}}>Quick Scenarios & Saved Views</div>
+          
+          {/* SAVE VIEW BUTTON */}
+          <div style={{display:"flex", gap:6}}>
+            <input type="text" value={newViewName} onChange={e=>setNewViewName(e.target.value)} placeholder="Name this scenario..." style={{padding:"6px 10px", borderRadius:6, border:`1px solid ${T.border}`, fontSize:12, width:150}} />
+            <button disabled={isSavingView || !newViewName} onClick={handleSaveView} style={{display:"flex", alignItems:"center", gap:4, padding:"6px 12px", borderRadius:6, background:T.text, color:T.bg, border:"none", cursor:!newViewName?"not-allowed":"pointer", fontSize:12, fontWeight:600, opacity:!newViewName?0.5:1}}>
+              <Ic n="save" s={12} c={T.bg} /> {isSavingView ? "..." : "Save View"}
+            </button>
+          </div>
+        </div>
+
+        <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
+          {/* Hardcoded Standard Scenarios */}
+          {HARDCODED_SCENARIOS.map(s => (
+            <button key={s.id} onClick={() => applyHardcodedScenario(s)} style={{display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:8, background:activeScenario?.id === s.id ? T.text : T.bgSub, color:activeScenario?.id === s.id ? T.bg : T.text, border:`1px solid ${activeScenario?.id === s.id ? T.text : T.border}`, cursor:"pointer", fontSize:13, fontWeight:600, transition:"all 0.15s"}}>
               <Ic n={s.icon} s={16} c={activeScenario?.id === s.id ? T.bg : T.textSec} />
               {s.name}
-              <span style={{fontSize:11, fontWeight:400, opacity:0.7, marginLeft:4}}>{s.desc}</span>
+            </button>
+          ))}
+
+          {/* User's Cloud-Saved Scenarios */}
+          {savedViews.map(v => (
+            <button key={v.id} onClick={() => applySavedView(v)} style={{display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:8, background:activeScenario?.id === v.id ? T.blue : T.blueLight, color:activeScenario?.id === v.id ? T.bg : T.blue, border:`1px solid ${activeScenario?.id === v.id ? T.blue : T.blue+"40"}`, cursor:"pointer", fontSize:13, fontWeight:600, transition:"all 0.15s"}}>
+              <Ic n="save" s={16} c={activeScenario?.id === v.id ? T.bg : T.blue} />
+              {v.name}
             </button>
           ))}
         </div>
         
-        {/* INSIGHT BOX (Only shows when scenario is active) */}
+        {/* INSIGHT BOX */}
         {activeScenario && (
           <div style={{marginTop:12, padding:14, background:T.orangeLight, borderRadius:8, border:`1px solid ${T.orange}40`, display:"flex", gap:12, alignItems:"flex-start"}}>
             <div style={{marginTop:2}}><Ic n="zap" s={18} c={T.orange}/></div>
             <div>
-              <div style={{fontSize:12, fontWeight:700, color:T.orange, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.5px"}}>Strategic Insight</div>
+              <div style={{fontSize:12, fontWeight:700, color:T.orange, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.5px"}}>Scenario Active</div>
               <div style={{fontSize:13, color:T.text, lineHeight:1.5}}>{activeScenario.insight}</div>
             </div>
           </div>
