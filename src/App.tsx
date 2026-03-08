@@ -2,12 +2,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// 👇 YOUR SUPABASE CREDENTIALS
 const supabaseUrl = "https://pqqwmiwmuvcnixgmxkof.supabase.co";
 const supabaseKey = "sb_publishable_YcGeop_U8cCprzsEu4Z21w_lIqNUrgx";
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-/* ═══ STRAVA-INSPIRED DESIGN TOKENS ═══ */
+/* ═══ DESIGN TOKENS ═══ */
 const T = {
   bg: "#FFFFFF", bgSub: "#F7F7F7", bgCard: "#FFFFFF",
   border: "#E8E8E8", borderLight: "#F0F0F0",
@@ -28,7 +27,7 @@ const Ic=({n,s=20,c=T.text,w=1.5})=>(<svg width={s} height={s} viewBox="0 0 24 2
 const fmt=n=>{if(Math.abs(n)>=1e6)return`€${(n/1e6).toFixed(1)}M`;if(Math.abs(n)>=1e3)return`€${(n/1e3).toFixed(Math.abs(n)>=1e4?0:1)}K`;return`€${Math.round(n)}`};
 const fU=n=>{if(n>=1e6)return`${(n/1e6).toFixed(1)}M`;if(n>=1e3)return`${(n/1e3).toFixed(n>=1e4?0:1)}K`;return`${Math.round(n)}`};
 
-/* ═══ MODELS & CITIES & RANGES ═══ */
+/* ═══ MODELS ═══ */
 const MODELS=[
   {id:"consumer_sub",name:"Consumer Subscription",tag:"Individual climbers pay €5–8/mo for analytics, training plans, and advanced social features",icon:"layers",color:T.orange,colorLight:T.orangeLight,who:"Individual climbers",what:"Analytics, training, social",excl:"Only individual subscription revenue.",desc:"Free logbook aggregates all platforms. Premium unlocks grade pyramids, progression analytics, weakness detection, training plans. The Strava playbook.",
     moat:["0–6mo: None","6–18mo: Switching cost (history)","18–36mo: Network effects","3yr+: Data moat"],
@@ -44,6 +43,7 @@ const MODELS=[
     risks:[{r:"Need 10K+ users first",s:5,m:"Patience + runway. Hybrid with Consumer Sub"},{r:"Tiny brand budgets vs cycling",s:4,m:"Only precise digital channel for climbing"},{r:"Revenue unpredictable",s:4,m:"Annual retainers, diversify"},{r:"Users dislike ads",s:3,m:"Sponsored challenges = content"}]},
 ];
 
+/* ═══ CITIES ═══ */
 const CITIES={
   barcelona:{name:"Barcelona",tam:15000,gyms:10,info:"Sharma BCN/Gavà, Bloc District, Climbat, Monobloc, Deu Dits, Freebloc, Kimera. Crags: Montserrat, Siurana, Margalef."},
   lisbon:{name:"Lisbon",tam:8000,gyms:6,info:"Vertigo, 9.8 Gravity, Escala25 (bridge gym), Altissimo. Expat/nomad community. Outdoor: Sintra, Cascais."},
@@ -51,6 +51,7 @@ const CITIES={
   amsterdam:{name:"Amsterdam",tam:12000,gyms:8,info:"Monk, Beest Boulders (3,400m²), Beta Boulders, Het Lab, Climbing Network. TopLogger strong. NCC opening 2026."},
 };
 
+/* ═══ RANGES ═══ */
 const RANGES={
   consumer_sub:{growth:{min:0.02,max:0.30,lo:0.08,hi:0.15,label:"Monthly growth",fmt:"pct"},activation:{min:0.20,max:0.90,lo:0.45,hi:0.65,label:"Activation rate",fmt:"pct"},conversion:{min:0.01,max:0.20,lo:0.03,hi:0.08,label:"Free → Paid",fmt:"pct"},price:{min:1.99,max:14.99,lo:3.99,hi:7.99,label:"Price / mo",fmt:"eur"},churn:{min:0.01,max:0.15,lo:0.04,hi:0.08,label:"Monthly churn",fmt:"pct"},expansion:{min:1,max:10,lo:2,hi:5,label:"Yr2 expansion",fmt:"num"},dev:{min:0,max:15000,lo:2000,hi:5000,label:"Dev cost / mo",fmt:"eur"},marketing:{min:0,max:5000,lo:200,hi:1000,label:"Marketing / mo",fmt:"eur"}},
   b2b_saas:{growth:{min:0.02,max:0.25,lo:0.06,hi:0.12,label:"Monthly growth",fmt:"pct"},activation:{min:0.20,max:0.90,lo:0.40,hi:0.60,label:"Activation rate",fmt:"pct"},gymConv:{min:0.05,max:0.80,lo:0.15,hi:0.40,label:"Gym conversion",fmt:"pct"},gymPrice:{min:49,max:499,lo:99,hi:249,label:"Gym price / mo",fmt:"eur"},brandDeals:{min:0,max:15,lo:1,hi:5,label:"Brand deals yr2",fmt:"num"},brandValue:{min:1000,max:25000,lo:3000,hi:8000,label:"Deal value",fmt:"eur"},dev:{min:0,max:15000,lo:2000,hi:5000,label:"Dev cost / mo",fmt:"eur"},marketing:{min:0,max:5000,lo:100,hi:500,label:"Marketing / mo",fmt:"eur"}},
@@ -60,7 +61,7 @@ const RANGES={
 
 const mkDef=(cks,mid)=>{const tam=cks.reduce((s,c)=>s+CITIES[c].tam,0);const gyms=cks.reduce((s,c)=>s+CITIES[c].gyms,0);const R=RANGES[mid];const d={};Object.entries(R).forEach(([k,r])=>{d[k]=Math.round(((r.lo+r.hi)/2)*1000)/1000;});d.tam=tam;if(mid==="b2b_saas")d.gyms=gyms;if(mid==="marketplace"){d.guides=Math.max(3,Math.floor(gyms*0.8));d.coaching=Math.floor(tam/500);d.gearTx=Math.floor(tam/750);d.coachPrice=60;d.gearPrice=45;}return d;};
 
-/* ═══ PRE-BUILT SCENARIOS ═══ */
+/* ═══ HARDCODED SCENARIOS ═══ */
 const HARDCODED_SCENARIOS = [
   {
     id: "lean_bcn",
@@ -69,79 +70,64 @@ const HARDCODED_SCENARIOS = [
     desc: "Consumer + Sponsor in BCN — bootstrapped reality",
     models: ["consumer_sub", "sponsorship"],
     cities: ["barcelona"],
-    insight: "Fully bootstrapped: 2–3 devs vibe-coding, €200/mo infra (Supabase + APIs), zero paid marketing. Growth is entirely organic — gym visits, Charlotte's network, and word-of-mouth among the BCN climbing community. We assume 1 small local sponsorship deal in year 1 (~€750). Break-even only happens if the community grows steadily AND we stay disciplined on costs. This is the honest floor scenario.",
+    insight: "Fully bootstrapped: 2–3 devs vibe-coding, €200/mo infra (Supabase + APIs), zero paid marketing. Growth is entirely organic — gym visits, Charlotte's network, and word-of-mouth in the BCN climbing community. 1 small local sponsorship deal in year 1 (~€750). Break-even only happens if community grows steadily AND we stay disciplined on costs. This is the honest floor.",
     overrides: {
-      consumer_sub: {
-        dev: 200,           // infra only — no salaries, vibe-coding in-house
-        marketing: 50,      // essentially zero — occasional flyer, sticker run
-        growth: 0.06,       // realistic cold-start organic growth
-        activation: 0.50,   // half of signups actually log regularly
-        conversion: 0.035,  // 3.5% free → paid, conservative
-        price: 5.99,        // accessible price point
-        churn: 0.07,        // slightly high early — product still maturing
-        expansion: 2        // modest yr2 expansion as word spreads
-      },
-      sponsorship: {
-        dev: 0,             // no extra dev for sponsorship track
-        marketing: 50,      // Charlotte's outreach costs (travel, samples)
-        deals1: 1,          // 1 local deal yr1 (e.g. a BCN gym or local brand)
-        val1: 750,          // small deal — exposure play, not revenue play
-        deals2: 4,          // yr2: Charlotte's European network activates
-        val2: 3500,         // mid-tier brand deals (La Sportiva, Friction Labs type)
-        deals3: 9,          // yr3: established track record
-        val3: 6000,         // proper brand partnerships
-        content: 100        // content production (reels, athlete collabs)
-      }
-    }
-  },
-  {
-    id: "charlotte_network",
-    name: "Charlotte's Network",
-    icon: "users",
-    desc: "Sponsorship-led — unlocks at 12mo with European brand reach",
-    models: ["sponsorship", "consumer_sub"],
-    cities: ["barcelona"],
-    insight: "Same lean cost base, but bets heavily on Charlotte's European-level connections kicking in at month 12. By then we have enough users (500–1K) to show brands a real, engaged climbing audience. Targets: 1 European gear brand (La Sportiva, Scarpa, Mammut tier), 2–3 mid-size deals by month 18. Consumer sub runs quietly in the background. This scenario only works if Charlotte actively owns the brand outreach — it's not passive.",
-    overrides: {
-      sponsorship: {
-        dev: 200,
-        marketing: 150,     // Charlotte traveling to comps, brand events
-        deals1: 1,
-        val1: 750,
-        deals2: 6,          // European reach unlocks: 6 deals in yr2
-        val2: 5000,         // real brand budgets at European level
-        deals3: 14,
-        val3: 9000,
-        content: 300        // pro athlete content, comp coverage
-      },
-      consumer_sub: {
-        dev: 0,
-        marketing: 0,
-        growth: 0.07,
-        activation: 0.55,
-        conversion: 0.03,   // lower — sponsorship app = less premium urgency
-        price: 4.99,
-        churn: 0.06,
-        expansion: 3
-      }
+      consumer_sub: { dev: 200, marketing: 50, growth: 0.06, activation: 0.50, conversion: 0.035, price: 5.99, churn: 0.07, expansion: 2 },
+      sponsorship:  { dev: 0, marketing: 50, deals1: 1, val1: 750, deals2: 4, val2: 3500, deals3: 9, val3: 6000, content: 100 }
     }
   }
 ];
 
+/* ═══ MODIFIERS ═══ */
+const MODIFIERS = {
+  charlotte_network: {
+    id: "charlotte_network",
+    name: "Charlotte's Network",
+    icon: "users",
+    tooltip: "Scales sponsorship deals, boosts organic growth via athlete word-of-mouth, unlocks gym intros and brand contacts. Yr1 unchanged — activates from yr2 when there's an audience to show brands.",
+    apply: (asmpt, selM) => {
+      const a = JSON.parse(JSON.stringify(asmpt));
+      if (selM.includes("sponsorship")) {
+        // yr1 untouched — no audience yet to pitch brands
+        a.sponsorship.deals2   = Math.round((a.sponsorship.deals2   || 4)    * 1.8);
+        a.sponsorship.val2     = Math.round((a.sponsorship.val2     || 3500) * 1.5);
+        a.sponsorship.deals3   = Math.round((a.sponsorship.deals3   || 9)    * 1.6);
+        a.sponsorship.val3     = Math.round((a.sponsorship.val3     || 6000) * 1.5);
+        a.sponsorship.content  = Math.round((a.sponsorship.content  || 100)  * 3);
+        a.sponsorship.marketing= Math.round((a.sponsorship.marketing|| 50)   * 3);
+      }
+      if (selM.includes("consumer_sub")) {
+        a.consumer_sub.growth     = Math.min(0.25, (a.consumer_sub.growth     || 0.06) * 1.3);
+        a.consumer_sub.activation = Math.min(0.85, (a.consumer_sub.activation || 0.50) * 1.15);
+      }
+      if (selM.includes("b2b_saas")) {
+        a.b2b_saas.gymConv    = Math.min(0.75, (a.b2b_saas.gymConv    || 0.25) * 1.3);
+        a.b2b_saas.brandDeals = Math.round((a.b2b_saas.brandDeals || 3)    * 2);
+        a.b2b_saas.brandValue = Math.round((a.b2b_saas.brandValue || 5000) * 1.4);
+      }
+      if (selM.includes("marketplace")) {
+        a.marketplace.guides        = Math.round((a.marketplace.guides        || 8) * 1.5);
+        a.marketplace.tripsPerGuide = Math.min(12, (a.marketplace.tripsPerGuide || 4) * 1.2);
+      }
+      return a;
+    }
+  }
+};
+
 /* ═══ PROJECTION MATH ═══ */
 function project(id,a,numCities=1){
   const out=[];let users=0,paid=0;
-  const cityMktMult = 1 + (numCities - 1) * 0.4;  
-  const cityDevMult = 1 + (numCities - 1) * 0.2;   
-  const cityOps = (numCities - 1) * 200;             
+  const cityMktMult = 1 + (numCities - 1) * 0.4;
+  const cityDevMult = 1 + (numCities - 1) * 0.2;
+  const cityOps = (numCities - 1) * 200;
   for(let m=0;m<=36;m++){
     const exp=m>=12?(a.expansion||1):1;const tam=(a.tam||15000)*exp;
     if(m>0){const gr=(a.growth||0.10)*(1-users/tam);users=Math.min(tam,users+Math.max(0,Math.floor(users*gr+(m<=3?30*numCities:0))));}
     const active=Math.floor(users*(a.activation||0.6));
-    let baseDev = (a.dev||0) * cityDevMult;
-    let baseMkt = (a.marketing||0) * cityMktMult;
-    let baseContent = (a.content||0) || 0;
-    let cost = baseDev + baseMkt + baseContent + cityOps;
+    let baseDev=(a.dev||0)*cityDevMult;
+    let baseMkt=(a.marketing||0)*cityMktMult;
+    let baseContent=(a.content||0)||0;
+    let cost=baseDev+baseMkt+baseContent+cityOps;
     if(m>=12)cost*=1.4;if(m>=24)cost*=1.25;
     let rev=0;
     if(id==="consumer_sub"){if(m>=6){paid=Math.floor(active*(a.conversion||0.055)*Math.pow(1-(a.churn||0.06),Math.max(0,m-6)));rev=paid*(a.price||5.99);}}
@@ -154,12 +140,12 @@ function project(id,a,numCities=1){
 
 function combine(ids,asmpt,numCities=1){
   const all=ids.map(id=>project(id,asmpt[id],numCities));
-  const modelDiscount = ids.length === 1 ? 1 : ids.length === 2 ? 0.75 : 0.65;
+  const modelDiscount=ids.length===1?1:ids.length===2?0.75:0.65;
   return Array.from({length:37},(_,i)=>{
     const rev=all.reduce((s,a)=>s+a[i].revenue,0);
     const rawCosts=all.reduce((s,a)=>s+a[i].costs,0);
     const costs=Math.round(rawCosts*modelDiscount);
-    return {month:i,users:Math.max(...all.map(a=>a[i].users)),revenue:Math.round(rev),costs,profit:Math.round(rev-costs),arr:Math.round(rev*12)};
+    return{month:i,users:Math.max(...all.map(a=>a[i].users)),revenue:Math.round(rev),costs,profit:Math.round(rev-costs),arr:Math.round(rev*12)};
   });
 }
 
@@ -206,108 +192,100 @@ function Slider({label,value,onChange,min,max,lo,hi,format,color=T.orange,tip}){
   </div>);
 }
 
-/* ═══ MAIN ═══ */
+/* ═══ MAIN APP ═══ */
 export default function App(){
   const [selM,setSelM]=useState(["consumer_sub"]);
   const [selC,setSelC]=useState(["barcelona"]);
   const [asmpt,setAsmpt]=useState(()=>{const a={};MODELS.forEach(m=>{a[m.id]=mkDef(["barcelona"],m.id);});return a;});
   const [chartV,setChartV]=useState("revenue");
   const [tab,setTab]=useState("chart");
-  const [activeScenario, setActiveScenario]=useState(null);
-  
+  const [activeScenario,setActiveScenario]=useState(null);
+  const [activeModifiers,setActiveModifiers]=useState([]);
+
   // LIVE DATABASE STATES
-  const [comments, setComments] = useState([]);
-  const [savedViews, setSavedViews] = useState([]);
-  const [newComment, setNewComment] = useState("");
-  const [newViewName, setNewViewName] = useState("");
-  const [isPosting, setIsPosting] = useState(false);
-  const [isSavingView, setIsSavingView] = useState(false);
+  const [comments,setComments]=useState([]);
+  const [savedViews,setSavedViews]=useState([]);
+  const [newComment,setNewComment]=useState("");
+  const [newViewName,setNewViewName]=useState("");
+  const [isPosting,setIsPosting]=useState(false);
+  const [isSavingView,setIsSavingView]=useState(false);
 
-  useEffect(() => {
+  useEffect(()=>{
     fetchData();
-    
-    // Listen for new comments
-    const channel1 = supabase.channel('comments-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, payload => {
-      setComments(current => [...current, payload.new]);
-    }).subscribe();
+    const channel1=supabase.channel('comments-changes').on('postgres_changes',{event:'INSERT',schema:'public',table:'comments'},payload=>{setComments(current=>[...current,payload.new]);}).subscribe();
+    const channel2=supabase.channel('views-changes').on('postgres_changes',{event:'INSERT',schema:'public',table:'saved_views'},payload=>{setSavedViews(current=>[...current,payload.new]);}).subscribe();
+    return()=>{supabase.removeChannel(channel1);supabase.removeChannel(channel2);};
+  },[]);
 
-    // Listen for new saved views
-    const channel2 = supabase.channel('views-changes').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'saved_views' }, payload => {
-      setSavedViews(current => [...current, payload.new]);
-    }).subscribe();
-
-    return () => { supabase.removeChannel(channel1); supabase.removeChannel(channel2); };
-  }, []);
-
-  const fetchData = async () => {
-    const { data: cData } = await supabase.from('comments').select('*').order('created_at', { ascending: true });
-    if (cData) setComments(cData);
-    
-    const { data: vData } = await supabase.from('saved_views').select('*').order('created_at', { ascending: true });
-    if (vData) setSavedViews(vData);
+  const fetchData=async()=>{
+    const{data:cData}=await supabase.from('comments').select('*').order('created_at',{ascending:true});
+    if(cData)setComments(cData);
+    const{data:vData}=await supabase.from('saved_views').select('*').order('created_at',{ascending:true});
+    if(vData)setSavedViews(vData);
   };
+
+  /* ═══ MODIFIER LOGIC ═══ */
+  const toggleModifier=(modId)=>{
+    setActiveModifiers(p=>p.includes(modId)?p.filter(x=>x!==modId):[...p,modId]);
+  };
+
+  const effectiveAsmpt=useMemo(()=>{
+    let a=asmpt;
+    activeModifiers.forEach(modId=>{
+      if(MODIFIERS[modId])a=MODIFIERS[modId].apply(a,selM);
+    });
+    return a;
+  },[asmpt,activeModifiers,selM]);
 
   /* ═══ ACTIONS ═══ */
-  const applyHardcodedScenario = (s) => {
-    setSelM(s.models);
-    setSelC(s.cities);
-    const newAsmpt = {};
-    MODELS.forEach(m => {
-      newAsmpt[m.id] = mkDef(s.cities, m.id);
-      if (s.models.includes(m.id) && s.overrides[m.id]) {
-        newAsmpt[m.id] = { ...newAsmpt[m.id], ...s.overrides[m.id] };
-      }
+  const applyHardcodedScenario=(s)=>{
+    setSelM(s.models);setSelC(s.cities);
+    const newAsmpt={};
+    MODELS.forEach(m=>{
+      newAsmpt[m.id]=mkDef(s.cities,m.id);
+      if(s.models.includes(m.id)&&s.overrides[m.id]){newAsmpt[m.id]={...newAsmpt[m.id],...s.overrides[m.id]};}
     });
-    setAsmpt(newAsmpt);
-    setActiveScenario(s);
+    setAsmpt(newAsmpt);setActiveScenario(s);
   };
 
-  const applySavedView = (view) => {
-    setSelM(view.state_data.models);
-    setSelC(view.state_data.cities);
-    setAsmpt(view.state_data.asmpt);
-    setActiveScenario({ id: view.id, name: view.name, insight: view.description });
+  const applySavedView=(view)=>{
+    setSelM(view.state_data.models);setSelC(view.state_data.cities);setAsmpt(view.state_data.asmpt);
+    setActiveScenario({id:view.id,name:view.name,insight:view.description});
   };
 
-  const handleSaveView = async () => {
-    if(!newViewName.trim()) return;
-    setIsSavingView(true);
-    
-    // Bundle up everything on the screen
-    const stateData = { models: selM, cities: selC, asmpt: asmpt };
-    const desc = `${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")} in ${selC.map(c=>CITIES[c].name).join(", ")}. Saved on ${new Date().toLocaleDateString()}`;
-    
-    const { error } = await supabase.from('saved_views').insert([{ 
-      name: newViewName, 
-      description: desc,
-      state_data: stateData 
-    }]);
-    
+  const handleSaveView=async()=>{
+    if(!newViewName.trim())return;setIsSavingView(true);
+    const stateData={models:selM,cities:selC,asmpt:asmpt};
+    const desc=`${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")} in ${selC.map(c=>CITIES[c].name).join(", ")}. Saved on ${new Date().toLocaleDateString()}`;
+    const{error}=await supabase.from('saved_views').insert([{name:newViewName,description:desc,state_data:stateData}]);
     setIsSavingView(false);
-    if (!error) { setNewViewName(""); } else { alert("Error saving view: " + error.message); }
+    if(!error){setNewViewName("");}else{alert("Error saving view: "+error.message);}
   };
 
-  const toggleM=id=>{setActiveScenario(null);setSelM(p=>{const n=p.includes(id)?p.filter(x=>x!==id):[...p,id].slice(0,3);return n.length?n:[id];});};
+  const toggleM=id=>{
+    setActiveScenario(null);
+    setSelM(p=>{const n=p.includes(id)?p.filter(x=>x!==id):[...p,id].slice(0,3);return n.length?n:[id];});
+  };
   const toggleC=ck=>{
     setActiveScenario(null);
     const n=selC.includes(ck)?selC.filter(x=>x!==ck):[...selC,ck];if(!n.length)return;setSelC(n);
     setAsmpt(prev=>{const a={...prev};MODELS.forEach(m=>{a[m.id]={...a[m.id],tam:n.reduce((s,c)=>s+CITIES[c].tam,0),gyms:n.reduce((s,c)=>s+CITIES[c].gyms,0)};});return a;});
   };
   const upd=useCallback((mid,k,v)=>{setActiveScenario(null);setAsmpt(p=>({...p,[mid]:{...p[mid],[k]:v}}));},[]);
-  
-  const handleAddComment = async () => {
-    if(!newComment.trim()) return;
-    setIsPosting(true);
-    const currentScenarioLabel = activeScenario ? `Scenario: ${activeScenario.name}` : `${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")} in ${selC.map(c=>CITIES[c].name).join(", ")}`;
-    const { error } = await supabase.from('comments').insert([{ author: "Founder", role: "Admin", text: newComment, scenario: currentScenarioLabel }]);
+
+  const handleAddComment=async()=>{
+    if(!newComment.trim())return;setIsPosting(true);
+    const currentScenarioLabel=activeScenario?`Scenario: ${activeScenario.name}`:`${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")} in ${selC.map(c=>CITIES[c].name).join(", ")}`;
+    const modLabel=activeModifiers.length>0?` + ${activeModifiers.map(id=>MODIFIERS[id].name).join(", ")}`:"";
+    const{error}=await supabase.from('comments').insert([{author:"Founder",role:"Admin",text:newComment,scenario:currentScenarioLabel+modLabel}]);
     setIsPosting(false);
-    if (!error) { setNewComment(""); } else { alert("Error saving comment."); }
+    if(!error){setNewComment("");}else{alert("Error saving comment.");}
   };
 
   const prim=MODELS.find(m=>m.id===selM[0]);
-  const numCities = selC.length;
-  const indiv=useMemo(()=>{const r={};MODELS.forEach(m=>{r[m.id]=project(m.id,asmpt[m.id],numCities);});return r;},[asmpt,numCities]);
-  const comb=useMemo(()=>combine(selM,asmpt,numCities),[selM,asmpt,numCities]);
+  const numCities=selC.length;
+  const indiv=useMemo(()=>{const r={};MODELS.forEach(m=>{r[m.id]=project(m.id,effectiveAsmpt[m.id],numCities);});return r;},[effectiveAsmpt,numCities]);
+  const comb=useMemo(()=>combine(selM,effectiveAsmpt,numCities),[selM,effectiveAsmpt,numCities]);
   const last=comb[comb.length-1]||{};
   const be=comb.findIndex(p=>p.profit>0);
 
@@ -318,7 +296,7 @@ export default function App(){
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
     <style>{`input[type=range]{-webkit-appearance:none;height:4px;border-radius:3px;background:${T.border};outline:none;cursor:pointer} input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:${T.orange};cursor:pointer;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.2)} *{box-sizing:border-box} ::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-thumb{background:${T.border};border-radius:3px}`}</style>
 
-    {/* ═══ HEADER ═══ */}
+    {/* HEADER */}
     <div style={{background:T.bg,borderBottom:`1px solid ${T.border}`,padding:"16px 28px"}}>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -328,58 +306,67 @@ export default function App(){
             <p style={{fontSize:12,color:T.textTer,margin:0}}>Business Model Explorer</p>
           </div>
         </div>
-        
-        <button onClick={()=>setTab("comments")} style={{display:"flex", alignItems:"center", gap:6, padding:"8px 16px", background:comments.length>0?T.orangeLight:T.bgSub, border:`1px solid ${comments.length>0?T.orange:T.border}`, borderRadius:20, color:comments.length>0?T.orange:T.textSec, fontSize:13, fontWeight:600, cursor:"pointer", transition:"all 0.2s"}}>
-          <Ic n="message" s={16} c={comments.length>0?T.orange:T.textSec} />
-          {comments.length} Live {comments.length === 1 ? "Thread" : "Threads"}
+        <button onClick={()=>setTab("comments")} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 16px",background:comments.length>0?T.orangeLight:T.bgSub,border:`1px solid ${comments.length>0?T.orange:T.border}`,borderRadius:20,color:comments.length>0?T.orange:T.textSec,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>
+          <Ic n="message" s={16} c={comments.length>0?T.orange:T.textSec}/>
+          {comments.length} Live {comments.length===1?"Thread":"Threads"}
         </button>
       </div>
 
-      {/* QUICK SCENARIOS & SAVED VIEWS */}
-      <div style={{marginBottom:16, paddingBottom:16, borderBottom:`1px solid ${T.borderLight}`}}>
-        <div style={{display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:8}}>
+      {/* SCENARIOS & SAVED VIEWS */}
+      <div style={{marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${T.borderLight}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:8}}>
           <div style={{...lbl,marginBottom:0}}>Quick Scenarios & Saved Views</div>
-          
-          {/* SAVE VIEW BUTTON */}
-          <div style={{display:"flex", gap:6}}>
-            <input type="text" value={newViewName} onChange={e=>setNewViewName(e.target.value)} placeholder="Name this scenario..." style={{padding:"6px 10px", borderRadius:6, border:`1px solid ${T.border}`, fontSize:12, width:150}} />
-            <button disabled={isSavingView || !newViewName} onClick={handleSaveView} style={{display:"flex", alignItems:"center", gap:4, padding:"6px 12px", borderRadius:6, background:T.text, color:T.bg, border:"none", cursor:!newViewName?"not-allowed":"pointer", fontSize:12, fontWeight:600, opacity:!newViewName?0.5:1}}>
-              <Ic n="save" s={12} c={T.bg} /> {isSavingView ? "..." : "Save View"}
+          <div style={{display:"flex",gap:6}}>
+            <input type="text" value={newViewName} onChange={e=>setNewViewName(e.target.value)} placeholder="Name this scenario..." style={{padding:"6px 10px",borderRadius:6,border:`1px solid ${T.border}`,fontSize:12,width:150}}/>
+            <button disabled={isSavingView||!newViewName} onClick={handleSaveView} style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:6,background:T.text,color:T.bg,border:"none",cursor:!newViewName?"not-allowed":"pointer",fontSize:12,fontWeight:600,opacity:!newViewName?0.5:1}}>
+              <Ic n="save" s={12} c={T.bg}/>{isSavingView?"...":"Save View"}
             </button>
           </div>
         </div>
-
-        <div style={{display:"flex", gap:10, flexWrap:"wrap"}}>
-          {/* Hardcoded Standard Scenarios */}
-          {HARDCODED_SCENARIOS.map(s => (
-            <button key={s.id} onClick={() => applyHardcodedScenario(s)} style={{display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:8, background:activeScenario?.id === s.id ? T.text : T.bgSub, color:activeScenario?.id === s.id ? T.bg : T.text, border:`1px solid ${activeScenario?.id === s.id ? T.text : T.border}`, cursor:"pointer", fontSize:13, fontWeight:600, transition:"all 0.15s"}}>
-              <Ic n={s.icon} s={16} c={activeScenario?.id === s.id ? T.bg : T.textSec} />
-              {s.name}
-            </button>
-          ))}
-
-          {/* User's Cloud-Saved Scenarios */}
-          {savedViews.map(v => (
-            <button key={v.id} onClick={() => applySavedView(v)} style={{display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:8, background:activeScenario?.id === v.id ? T.blue : T.blueLight, color:activeScenario?.id === v.id ? T.bg : T.blue, border:`1px solid ${activeScenario?.id === v.id ? T.blue : T.blue+"40"}`, cursor:"pointer", fontSize:13, fontWeight:600, transition:"all 0.15s"}}>
-              <Ic n="save" s={16} c={activeScenario?.id === v.id ? T.bg : T.blue} />
-              {v.name}
-            </button>
-          ))}
+        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+          {HARDCODED_SCENARIOS.map(s=>(
+            <button key={s.id} onClick={()=>applyHardcodedScenario(s)} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 16px",borderRadius:8,background:activeScenario?.id===s.id?T.text:T.bgSub,color:activeScenario?.id===s.id?T.bg:T.text,border:`1px solid ${activeScenario?.id===s.id?T.text:T.border}`,cursor:"pointer",fontSize:13,fontWeight:600,transition:"all 0.15s"}}>
+              <Ic n={s.icon} s={16} c={activeScenario?.id===s.id?T.bg:T.textSec}/>{s.name}
+            </button>))}
+          {savedViews.map(v=>(
+            <button key={v.id} onClick={()=>applySavedView(v)} style={{display:"flex",alignItems:"center",gap:6,padding:"8px 16px",borderRadius:8,background:activeScenario?.id===v.id?T.blue:T.blueLight,color:activeScenario?.id===v.id?T.bg:T.blue,border:`1px solid ${activeScenario?.id===v.id?T.blue:T.blue+"40"}`,cursor:"pointer",fontSize:13,fontWeight:600,transition:"all 0.15s"}}>
+              <Ic n="save" s={16} c={activeScenario?.id===v.id?T.bg:T.blue}/>{v.name}
+            </button>))}
         </div>
-        
-        {/* INSIGHT BOX */}
-        {activeScenario && (
-          <div style={{marginTop:12, padding:14, background:T.orangeLight, borderRadius:8, border:`1px solid ${T.orange}40`, display:"flex", gap:12, alignItems:"flex-start"}}>
+        {activeScenario&&(
+          <div style={{marginTop:12,padding:14,background:T.orangeLight,borderRadius:8,border:`1px solid ${T.orange}40`,display:"flex",gap:12,alignItems:"flex-start"}}>
             <div style={{marginTop:2}}><Ic n="zap" s={18} c={T.orange}/></div>
             <div>
-              <div style={{fontSize:12, fontWeight:700, color:T.orange, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.5px"}}>Scenario Active</div>
-              <div style={{fontSize:13, color:T.text, lineHeight:1.5}}>{activeScenario.insight}</div>
+              <div style={{fontSize:12,fontWeight:700,color:T.orange,marginBottom:4,textTransform:"uppercase",letterSpacing:"0.5px"}}>Scenario Active</div>
+              <div style={{fontSize:13,color:T.text,lineHeight:1.5}}>{activeScenario.insight}</div>
             </div>
-          </div>
-        )}
+          </div>)}
       </div>
 
-      {/* Model toggles */}
+      {/* MODIFIERS */}
+      <div style={{marginBottom:16,paddingBottom:16,borderBottom:`1px solid ${T.borderLight}`}}>
+        <div style={{...lbl,fontSize:10,marginBottom:8}}>Modifiers — stack on any scenario or custom setup</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          {Object.values(MODIFIERS).map(mod=>{
+            const on=activeModifiers.includes(mod.id);
+            return(
+              <button key={mod.id} onClick={()=>toggleModifier(mod.id)} title={mod.tooltip}
+                style={{display:"flex",alignItems:"center",gap:6,padding:"8px 16px",borderRadius:20,border:`2px solid ${on?T.purple:T.border}`,background:on?T.purpleLight:T.bg,color:on?T.purple:T.textSec,cursor:"pointer",fontSize:12,fontWeight:on?700:400,transition:"all 0.15s"}}>
+                <Ic n={mod.icon} s={14} c={on?T.purple:T.textTer}/>
+                {mod.name}
+                {on&&<span style={{fontSize:10,background:T.purple,color:"#fff",borderRadius:8,padding:"1px 6px",marginLeft:2}}>ON</span>}
+              </button>);
+          })}
+        </div>
+        {activeModifiers.length>0&&(
+          <div style={{marginTop:10,padding:"10px 14px",background:T.purpleLight,borderRadius:8,border:`1px solid ${T.purple}40`,display:"flex",gap:10,alignItems:"center"}}>
+            <Ic n="users" s={16} c={T.purple}/>
+            <span style={{fontSize:12,color:T.purple,fontWeight:700}}>Charlotte's Network active</span>
+            <span style={{fontSize:12,color:T.textSec}}>— sponsorship ×1.5–1.8, organic growth +30%, content ×3. Yr1 unchanged. Kicks in from yr2 when there's an audience to show brands.</span>
+          </div>)}
+      </div>
+
+      {/* MODEL TOGGLES */}
       <div style={{marginBottom:10}}>
         <div style={{...lbl,fontSize:10,marginBottom:5}}>Revenue models — select up to 3</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
@@ -393,28 +380,29 @@ export default function App(){
         </div>
       </div>
 
-      {/* City toggles */}
+      {/* CITY TOGGLES */}
       <div>
         <div style={{...lbl,fontSize:10,marginBottom:5}}>Launch cities — select 1+</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {Object.entries(CITIES).map(([ck,cv])=>{const on=selC.includes(ck);return(
             <button key={ck} onClick={()=>toggleC(ck)} style={{padding:"6px 14px",borderRadius:20,border:`2px solid ${on?T.orange:T.border}`,background:on?T.orangeLight:T.bg,color:on?T.orange:T.textSec,cursor:"pointer",fontSize:12,fontWeight:on?600:400,transition:"all 0.15s"}}>
-              {cv.name} <span style={{fontSize:10,opacity:0.6,marginLeft:2}}>({fU(cv.tam)})</span>
+              {cv.name}<span style={{fontSize:10,opacity:0.6,marginLeft:2}}>({fU(cv.tam)})</span>
             </button>);})}
         </div>
       </div>
     </div>
 
-    {/* ═══ STATUS BAR ═══ */}
+    {/* STATUS BAR */}
     <div style={{background:T.bg,borderBottom:`1px solid ${T.borderLight}`,padding:"8px 28px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",fontSize:12}}>
       {selM.map(id=>{const m=MODELS.find(x=>x.id===id);return<span key={id} style={{color:m.color,padding:"2px 10px",background:m.colorLight,borderRadius:12,fontWeight:600,fontSize:11}}>{m.name}</span>;})}
+      {activeModifiers.map(id=><span key={id} style={{color:T.purple,padding:"2px 10px",background:T.purpleLight,borderRadius:12,fontWeight:600,fontSize:11}}>+ {MODIFIERS[id].name}</span>)}
       <span style={{color:T.textTer}}>×</span>
       {selC.map(ck=><span key={ck} style={{color:T.textSec,padding:"2px 10px",background:T.bgSub,borderRadius:12,fontSize:11,border:`1px solid ${T.border}`}}>{CITIES[ck].name}</span>)}
-      <span style={{marginLeft:"auto",color:T.textTer,fontSize:11}}>TAM: {fU(selC.reduce((s,ck)=>s+CITIES[ck].tam,0))} · {selC.reduce((s,ck)=>s+CITIES[ck].gyms,0)} gyms · {selC.length > 1 ? `${selC.length} cities` : "1 city"}{selM.length > 1 ? ` · ${selM.length} models` : ""}</span>
+      <span style={{marginLeft:"auto",color:T.textTer,fontSize:11}}>TAM: {fU(selC.reduce((s,ck)=>s+CITIES[ck].tam,0))} · {selC.reduce((s,ck)=>s+CITIES[ck].gyms,0)} gyms · {selC.length>1?`${selC.length} cities`:"1 city"}{selM.length>1?` · ${selM.length} models`:""}</span>
     </div>
 
     <div style={{padding:"20px 28px 36px"}}>
-      {/* ═══ KPIs ═══ */}
+      {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:16}}>
         {[{l:"36-month ARR",v:fmt(last.arr||0),c:T.orange},{l:"Monthly Revenue",v:fmt(last.revenue||0)},{l:"Monthly Costs",v:fmt(comb[0]?.costs||0),sub:`→ ${fmt(last.costs||0)} at mo 36`},{l:"Break-even",v:be>=0?`Month ${comb[be].month}`:"Not yet",neg:be<0},{l:"36mo P&L",v:fmt(last.profit||0),neg:(last.profit||0)<0}].map((k,i)=>(
           <div key={i} style={{...card,textAlign:"center",padding:"14px 12px"}}>
@@ -424,17 +412,17 @@ export default function App(){
           </div>))}
       </div>
 
-      {/* ═══ TABS ═══ */}
+      {/* TABS */}
       <div style={{display:"flex",gap:0,marginBottom:16,borderBottom:`2px solid ${T.borderLight}`}}>
         {[{k:"chart",l:"Projections"},{k:"gtm",l:"Go-to-Market"},{k:"risks",l:"Risks & Moat"},{k:"comments",l:"Live Discussions"}].map(t=>(
           <button key={t.k} onClick={()=>setTab(t.k)} style={{padding:"10px 20px",border:"none",borderBottom:tab===t.k?`2px solid ${T.orange}`:"2px solid transparent",marginBottom:-2,background:"transparent",color:tab===t.k?T.orange:T.textSec,cursor:"pointer",fontSize:13,fontWeight:tab===t.k?700:500}}>{t.l}</button>))}
       </div>
 
-      {/* ═══ CHARTS TAB ═══ */}
+      {/* CHARTS TAB */}
       {tab==="chart"&&<div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:16}}>
         <div style={{...card,maxHeight:620,overflowY:"auto",padding:16}}>
-          <div style={lbl}>Assumptions</div>
-          {selM.map(mid=>{const m=MODELS.find(x=>x.id===mid);const R=RANGES[mid];const a=asmpt[mid];return(
+          <div style={lbl}>Assumptions {activeModifiers.length>0&&<span style={{color:T.purple,marginLeft:4,fontSize:10,fontWeight:600}}>({activeModifiers.map(id=>MODIFIERS[id].name).join(", ")} applied)</span>}</div>
+          {selM.map(mid=>{const m=MODELS.find(x=>x.id===mid);const R=RANGES[mid];const a=effectiveAsmpt[mid];return(
             <div key={mid} style={{marginBottom:20,paddingBottom:16,borderBottom:`1px solid ${T.borderLight}`}}>
               <div style={{fontSize:12,color:m.color,fontWeight:700,marginBottom:10,display:"flex",alignItems:"center",gap:5}}>
                 <Ic n={m.icon} s={13} c={m.color}/>{m.name}
@@ -443,7 +431,7 @@ export default function App(){
                 <Slider key={k} label={r.label} value={a[k]!==undefined?a[k]:(r.lo+r.hi)/2} onChange={v=>upd(mid,k,v)} min={r.min} max={r.max} lo={r.lo} hi={r.hi} format={r.fmt} color={m.color} tip={r.tip}/>
               ))}
             </div>);})}
-          <button onClick={()=>{setActiveScenario(null);const a={};selM.forEach(mid=>{a[mid]=mkDef(selC,mid);});setAsmpt(p=>({...p,...a}));}} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${T.border}`,background:T.bg,color:T.textSec,cursor:"pointer",fontSize:12,width:"100%",fontWeight:500}}>Reset all defaults</button>
+          <button onClick={()=>{setActiveScenario(null);setActiveModifiers([]);const a={};selM.forEach(mid=>{a[mid]=mkDef(selC,mid);});setAsmpt(p=>({...p,...a}));}} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${T.border}`,background:T.bg,color:T.textSec,cursor:"pointer",fontSize:12,width:"100%",fontWeight:500}}>Reset all defaults</button>
         </div>
 
         <div>
@@ -464,14 +452,14 @@ export default function App(){
                 <div key={mid}>
                   <div style={{fontSize:12,color:m.color,fontWeight:700,marginBottom:6,display:"flex",alignItems:"center",gap:4}}><Ic n={m.icon} s={12} c={m.color}/>{m.name}</div>
                   <Chart data={pr} lines={[{key:"revenue",color:m.color}]} h={110}/>
-                  <div style={{fontSize:14,fontWeight:800,color:T.text,textAlign:"center",marginTop:4}}>{fmt(l.arr)} <span style={{fontSize:10,fontWeight:400,color:T.textSec}}>ARR</span></div>
+                  <div style={{fontSize:14,fontWeight:800,color:T.text,textAlign:"center",marginTop:4}}>{fmt(l.arr)}<span style={{fontSize:10,fontWeight:400,color:T.textSec}}> ARR</span></div>
                 </div>);})}
             </div>
           </div>}
         </div>
       </div>}
 
-      {/* ═══ GTM TAB ═══ */}
+      {/* GTM TAB */}
       {tab==="gtm"&&<div style={{display:"grid",gridTemplateColumns:selC.length>2?"1fr 1fr":"repeat(auto-fit,minmax(320px,1fr))",gap:14}}>
         {selC.map(ck=>{const c=CITIES[ck];return(
           <div key={ck} style={card}>
@@ -485,7 +473,7 @@ export default function App(){
           </div>);})}
       </div>}
 
-      {/* ═══ RISKS TAB ═══ */}
+      {/* RISKS TAB */}
       {tab==="risks"&&<div>
         {selM.map(mid=>{const m=MODELS.find(x=>x.id===mid);return(
           <div key={mid} style={{...card,marginBottom:14}}>
@@ -507,7 +495,7 @@ export default function App(){
             {selM.map(mid=>{const m=MODELS.find(x=>x.id===mid);return(
               <div key={mid}>
                 <div style={{fontSize:12,color:m.color,fontWeight:700,marginBottom:8}}>{m.name}</div>
-                {m.moat.map((mp,i)=>{const [phase,...rest]=mp.split(": ");return(
+                {m.moat.map((mp,i)=>{const[phase,...rest]=mp.split(": ");return(
                   <div key={i} style={{display:"flex",gap:10,marginBottom:8}}>
                     <span style={{fontSize:11,color:m.color,fontWeight:600,minWidth:65,flexShrink:0}}>{phase}</span>
                     <span style={{fontSize:13,color:T.textSec,lineHeight:1.45}}>{rest.join(": ")}</span>
@@ -517,47 +505,34 @@ export default function App(){
         </div>
       </div>}
 
-      {/* ═══ LIVE COMMENTS TAB ═══ */}
-      {tab==="comments"&&<div style={{maxWidth:700, margin:"0 auto"}}>
-        <div style={{...card, marginBottom:16}}>
-          <h2 style={{fontSize:16, fontWeight:700, color:T.text, margin:"0 0 4px"}}>Live Strategy Discussions</h2>
-          <p style={{fontSize:13, color:T.textSec, margin:"0 0 16px"}}>
-            Comments here are saved securely to your Supabase database. They will sync instantly to your partner's screen.
-          </p>
-          
-          <div style={{display:"flex", flexDirection:"column", gap:12, marginBottom:20}}>
-            {comments.length === 0 && <div style={{padding:20, textAlign:"center", color:T.textTer, fontSize:13, border:`1px dashed ${T.border}`, borderRadius:8}}>No comments yet in the cloud database.</div>}
-            
+      {/* COMMENTS TAB */}
+      {tab==="comments"&&<div style={{maxWidth:700,margin:"0 auto"}}>
+        <div style={{...card,marginBottom:16}}>
+          <h2 style={{fontSize:16,fontWeight:700,color:T.text,margin:"0 0 4px"}}>Live Strategy Discussions</h2>
+          <p style={{fontSize:13,color:T.textSec,margin:"0 0 16px"}}>Comments sync instantly to your partner's screen via Supabase.</p>
+          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:20}}>
+            {comments.length===0&&<div style={{padding:20,textAlign:"center",color:T.textTer,fontSize:13,border:`1px dashed ${T.border}`,borderRadius:8}}>No comments yet in the cloud database.</div>}
             {comments.map(c=>(
-              <div key={c.id} style={{padding:14, background:c.author==="Gemini"?T.blueLight:T.bgSub, borderRadius:8, border:`1px solid ${c.author==="Gemini"?T.blue+"30":T.borderLight}`}}>
-                <div style={{display:"flex", justifyContent:"space-between", marginBottom:8}}>
-                  <div style={{display:"flex", alignItems:"center", gap:6}}>
-                    <span style={{fontSize:13, fontWeight:700, color:c.author==="Gemini"?T.blue:T.text}}>{c.author}</span>
-                    <span style={{fontSize:10, padding:"2px 6px", background:T.bg, borderRadius:10, color:T.textSec, border:`1px solid ${T.border}`}}>{c.role}</span>
+              <div key={c.id} style={{padding:14,background:c.author==="Gemini"?T.blueLight:T.bgSub,borderRadius:8,border:`1px solid ${c.author==="Gemini"?T.blue+"30":T.borderLight}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:13,fontWeight:700,color:c.author==="Gemini"?T.blue:T.text}}>{c.author}</span>
+                    <span style={{fontSize:10,padding:"2px 6px",background:T.bg,borderRadius:10,color:T.textSec,border:`1px solid ${T.border}`}}>{c.role}</span>
                   </div>
-                  <span style={{fontSize:11, color:T.textTer}}>
-                    {new Date(c.created_at).toLocaleDateString()} {new Date(c.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                  </span>
+                  <span style={{fontSize:11,color:T.textTer}}>{new Date(c.created_at).toLocaleDateString()} {new Date(c.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
                 </div>
-                
-                <div style={{fontSize:10, color:T.orange, marginBottom:6, fontWeight:600, letterSpacing:"0.5px", textTransform:"uppercase"}}>
-                  {c.scenario}
-                </div>
-                
-                <div style={{fontSize:13, color:T.text, lineHeight:1.5}}>{c.text}</div>
-              </div>
-            ))}
+                <div style={{fontSize:10,color:T.orange,marginBottom:6,fontWeight:600,letterSpacing:"0.5px",textTransform:"uppercase"}}>{c.scenario}</div>
+                <div style={{fontSize:13,color:T.text,lineHeight:1.5}}>{c.text}</div>
+              </div>))}
           </div>
-
-          <div style={{display:"flex", gap:10}}>
-            <textarea value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder={`Add your thoughts on the current scenario`} style={{flex:1, padding:12, borderRadius:8, border:`1px solid ${T.border}`, fontSize:13, fontFamily:"inherit", resize:"vertical", minHeight:40}} />
-            <button disabled={isPosting} onClick={handleAddComment} style={{padding:"0 20px", background:isPosting?T.textTer:T.text, color:T.bg, border:"none", borderRadius:8, fontWeight:600, cursor:isPosting?"wait":"pointer"}}>
-              {isPosting ? "..." : "Post to Cloud"}
+          <div style={{display:"flex",gap:10}}>
+            <textarea value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder="Add your thoughts on the current scenario" style={{flex:1,padding:12,borderRadius:8,border:`1px solid ${T.border}`,fontSize:13,fontFamily:"inherit",resize:"vertical",minHeight:40}}/>
+            <button disabled={isPosting} onClick={handleAddComment} style={{padding:"0 20px",background:isPosting?T.textTer:T.text,color:T.bg,border:"none",borderRadius:8,fontWeight:600,cursor:isPosting?"wait":"pointer"}}>
+              {isPosting?"...":"Post to Cloud"}
             </button>
           </div>
         </div>
       </div>}
-      
     </div>
   </div>);
 }
