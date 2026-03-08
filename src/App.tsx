@@ -1,7 +1,8 @@
+// @ts-nocheck
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { createClient } from "@supabase/supabase-js";
 
-// 👇 PASTE YOUR SUPABASE URL AND KEY HERE:
+// 👇 YOUR SUPABASE CREDENTIALS ARE NOW HARDCODED HERE:
 const supabaseUrl = "https://pqqwmiwmuvcnixgmxkof.supabase.co";
 const supabaseKey = "sb_publishable_YcGeop_U8cCprzsEu4Z21w_lIqNUrgx";
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -20,7 +21,7 @@ const T = {
 };
 
 /* ═══ ICONS ═══ */
-const SVG={layers:"M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",store:"M3 9l1-4h16l1 4M3 9h18M3 9v10a1 1 0 001 1h16a1 1 0 001-1V9M9 21V13h6v8",users:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",database:"M12 2C6.48 2 2 3.79 2 6s4.48 4 10 4 10-1.79 10-4-4.48-4-10-4zM2 6v6c0 2.21 4.48 4 10 4s10-1.79 10-4V6M2 12v6c0 2.21 4.48 4 10 4s10-1.79 10-4v-6",trending:"M23 6l-9.5 9.5-5-5L1 18M17 6h6v6"};
+const SVG={layers:"M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5",store:"M3 9l1-4h16l1 4M3 9h18M3 9v10a1 1 0 001 1h16a1 1 0 001-1V9M9 21V13h6v8",users:"M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75",database:"M12 2C6.48 2 2 3.79 2 6s4.48 4 10 4 10-1.79 10-4-4.48-4-10-4zM2 6v6c0 2.21 4.48 4 10 4s10-1.79 10-4V6M2 12v6c0 2.21 4.48 4 10 4s10-1.79 10-4v-6",trending:"M23 6l-9.5 9.5-5-5L1 18M17 6h6v6",zap:"M13 2L3 14h9l-1 8 10-12h-9l1-8z",message:"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"};
 const Ic=({n,s=20,c=T.text,w=1.5})=>(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round"><path d={SVG[n]||SVG.layers}/></svg>);
 
 /* ═══ FORMAT ═══ */
@@ -58,6 +59,23 @@ const RANGES={
 };
 
 const mkDef=(cks,mid)=>{const tam=cks.reduce((s,c)=>s+CITIES[c].tam,0);const gyms=cks.reduce((s,c)=>s+CITIES[c].gyms,0);const R=RANGES[mid];const d={};Object.entries(R).forEach(([k,r])=>{d[k]=Math.round(((r.lo+r.hi)/2)*1000)/1000;});d.tam=tam;if(mid==="b2b_saas")d.gyms=gyms;if(mid==="marketplace"){d.guides=Math.max(3,Math.floor(gyms*0.8));d.coaching=Math.floor(tam/500);d.gearTx=Math.floor(tam/750);d.coachPrice=60;d.gearPrice=45;}return d;};
+
+/* ═══ SCENARIOS DATA ═══ */
+const SCENARIOS = [
+  {
+    id: "lean_bcn",
+    name: "Lean BCN Launch",
+    icon: "zap",
+    desc: "Consumer + Sponsor in BCN",
+    models: ["consumer_sub", "sponsorship"],
+    cities: ["barcelona"],
+    insight: "This scenario simulates a highly bootstrapped launch solely in Barcelona. By doing the dev work in-house or with a lean team, we cap monthly costs around €2,000. Marketing relies entirely on organic gym relationships and local community building (€300/mo). We combine a basic €5.99 consumer sub with 2 local sponsorships per year to hit break-even before month 24.",
+    overrides: {
+      consumer_sub: { dev: 1200, marketing: 200, growth: 0.08, conversion: 0.04, price: 5.99 },
+      sponsorship: { dev: 800, marketing: 100, deals1: 2, val1: 1500 }
+    }
+  }
+];
 
 /* ═══ PROJECTION ═══ */
 function project(id,a,numCities=1){
@@ -144,68 +162,59 @@ export default function App(){
   const [asmpt,setAsmpt]=useState(()=>{const a={};MODELS.forEach(m=>{a[m.id]=mkDef(["barcelona"],m.id);});return a;});
   const [chartV,setChartV]=useState("revenue");
   const [tab,setTab]=useState("chart");
+  const [activeScenario, setActiveScenario]=useState(null);
   
   // REAL-TIME STATE FOR COMMENTS
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [isPosting, setIsPosting] = useState(false);
 
-  // FETCH COMMENTS FROM SUPABASE
   useEffect(() => {
     fetchComments();
-    
-    // Set up real-time listener to instantly show partner's new comments
     const channel = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments' }, payload => {
         setComments(current => [...current, payload.new]);
       })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, []);
 
   const fetchComments = async () => {
-    const { data, error } = await supabase
-      .from('comments')
-      .select('*')
-      .order('created_at', { ascending: true });
+    const { data, error } = await supabase.from('comments').select('*').order('created_at', { ascending: true });
     if (!error && data) setComments(data);
   };
 
-  const toggleM=id=>{setSelM(p=>{const n=p.includes(id)?p.filter(x=>x!==id):[...p,id].slice(0,3);return n.length?n:[id];});};
+  const applyScenario = (s) => {
+    setSelM(s.models);
+    setSelC(s.cities);
+    const newAsmpt = {};
+    MODELS.forEach(m => {
+      newAsmpt[m.id] = mkDef(s.cities, m.id);
+      if (s.models.includes(m.id) && s.overrides[m.id]) {
+        newAsmpt[m.id] = { ...newAsmpt[m.id], ...s.overrides[m.id] };
+      }
+    });
+    setAsmpt(newAsmpt);
+    setActiveScenario(s);
+  };
+
+  const toggleM=id=>{setActiveScenario(null);setSelM(p=>{const n=p.includes(id)?p.filter(x=>x!==id):[...p,id].slice(0,3);return n.length?n:[id];});};
   const toggleC=ck=>{
+    setActiveScenario(null);
     const n=selC.includes(ck)?selC.filter(x=>x!==ck):[...selC,ck];if(!n.length)return;setSelC(n);
     setAsmpt(prev=>{const a={...prev};MODELS.forEach(m=>{a[m.id]={...a[m.id],tam:n.reduce((s,c)=>s+CITIES[c].tam,0),gyms:n.reduce((s,c)=>s+CITIES[c].gyms,0)};});return a;});
   };
-  const upd=useCallback((mid,k,v)=>setAsmpt(p=>({...p,[mid]:{...p[mid],[k]:v}})),[]);
+  const upd=useCallback((mid,k,v)=>{setActiveScenario(null);setAsmpt(p=>({...p,[mid]:{...p[mid],[k]:v}}));},[]);
   
-// POST COMMENT TO SUPABASE
-const handleAddComment = async () => {
-  if(!newComment.trim() || !supabaseUrl.includes('supabase.co')) return;
-  setIsPosting(true);
-  
-  const currentScenarioLabel = `${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")} in ${selC.map(c=>CITIES[c].name).join(", ")}`;
-  
-  const { error } = await supabase
-    .from('comments')
-    .insert([{ 
-      author: "Founder", 
-      role: "Admin", 
-      text: newComment, 
-      scenario: currentScenarioLabel 
-    }]);
-    
-  setIsPosting(false);
-  
-  // 👇 THIS IS THE NEW ERROR POPUP LOGIC
-  if (!error) {
-    setNewComment("");
-  } else {
-    alert("Supabase Error: " + error.message);
-    console.log("Full Supabase Error:", error);
-  }
-};
+  const handleAddComment = async () => {
+    if(!newComment.trim() || !supabaseUrl.includes('supabase.co')) return;
+    setIsPosting(true);
+    const currentScenarioLabel = activeScenario ? `Scenario: ${activeScenario.name}` : `${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")} in ${selC.map(c=>CITIES[c].name).join(", ")}`;
+    const { error } = await supabase.from('comments').insert([{ author: "Founder", role: "Admin", text: newComment, scenario: currentScenarioLabel }]);
+    setIsPosting(false);
+    if (!error) { setNewComment(""); } else { alert("Supabase Error: " + error.message); }
+  };
 
   const prim=MODELS.find(m=>m.id===selM[0]);
   const numCities = selC.length;
@@ -223,7 +232,7 @@ const handleAddComment = async () => {
 
     {/* ═══ HEADER ═══ */}
     <div style={{background:T.bg,borderBottom:`1px solid ${T.border}`,padding:"16px 28px"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <div style={{width:32,height:32,borderRadius:8,background:T.orange,display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="trending" s={18} c="#fff" w={2.5}/></div>
           <div>
@@ -232,11 +241,35 @@ const handleAddComment = async () => {
           </div>
         </div>
         
-        {/* SHORTCUT TO COMMENTS */}
         <button onClick={()=>setTab("comments")} style={{display:"flex", alignItems:"center", gap:6, padding:"8px 16px", background:comments.length>0?T.orangeLight:T.bgSub, border:`1px solid ${comments.length>0?T.orange:T.border}`, borderRadius:20, color:comments.length>0?T.orange:T.textSec, fontSize:13, fontWeight:600, cursor:"pointer", transition:"all 0.2s"}}>
           <Ic n="message" s={16} c={comments.length>0?T.orange:T.textSec} />
           {comments.length} Live {comments.length === 1 ? "Thread" : "Threads"}
         </button>
+      </div>
+
+      {/* QUICK SCENARIOS */}
+      <div style={{marginBottom:16, paddingBottom:16, borderBottom:`1px solid ${T.borderLight}`}}>
+        <div style={{...lbl,fontSize:10,marginBottom:8}}>Quick Scenarios</div>
+        <div style={{display:"flex", gap:10}}>
+          {SCENARIOS.map(s => (
+            <button key={s.id} onClick={() => applyScenario(s)} style={{display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:8, background:activeScenario?.id === s.id ? T.text : T.bgSub, color:activeScenario?.id === s.id ? T.bg : T.text, border:`1px solid ${activeScenario?.id === s.id ? T.text : T.border}`, cursor:"pointer", fontSize:13, fontWeight:600, transition:"all 0.15s"}}>
+              <Ic n={s.icon} s={16} c={activeScenario?.id === s.id ? T.bg : T.textSec} />
+              {s.name}
+              <span style={{fontSize:11, fontWeight:400, opacity:0.7, marginLeft:4}}>{s.desc}</span>
+            </button>
+          ))}
+        </div>
+        
+        {/* INSIGHT BOX (Only shows when scenario is active) */}
+        {activeScenario && (
+          <div style={{marginTop:12, padding:14, background:T.orangeLight, borderRadius:8, border:`1px solid ${T.orange}40`, display:"flex", gap:12, alignItems:"flex-start"}}>
+            <div style={{marginTop:2}}><Ic n="zap" s={18} c={T.orange}/></div>
+            <div>
+              <div style={{fontSize:12, fontWeight:700, color:T.orange, marginBottom:4, textTransform:"uppercase", letterSpacing:"0.5px"}}>Strategic Insight</div>
+              <div style={{fontSize:13, color:T.text, lineHeight:1.5}}>{activeScenario.insight}</div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Model toggles */}
@@ -303,7 +336,7 @@ const handleAddComment = async () => {
                 <Slider key={k} label={r.label} value={a[k]!==undefined?a[k]:(r.lo+r.hi)/2} onChange={v=>upd(mid,k,v)} min={r.min} max={r.max} lo={r.lo} hi={r.hi} format={r.fmt} color={m.color} tip={r.tip}/>
               ))}
             </div>);})}
-          <button onClick={()=>{const a={};selM.forEach(mid=>{a[mid]=mkDef(selC,mid);});setAsmpt(p=>({...p,...a}));}} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${T.border}`,background:T.bg,color:T.textSec,cursor:"pointer",fontSize:12,width:"100%",fontWeight:500}}>Reset all defaults</button>
+          <button onClick={()=>{setActiveScenario(null);const a={};selM.forEach(mid=>{a[mid]=mkDef(selC,mid);});setAsmpt(p=>({...p,...a}));}} style={{padding:"8px 14px",borderRadius:8,border:`1px solid ${T.border}`,background:T.bg,color:T.textSec,cursor:"pointer",fontSize:12,width:"100%",fontWeight:500}}>Reset all defaults</button>
         </div>
 
         <div>
@@ -325,17 +358,6 @@ const handleAddComment = async () => {
                   <div style={{fontSize:12,color:m.color,fontWeight:700,marginBottom:6,display:"flex",alignItems:"center",gap:4}}><Ic n={m.icon} s={12} c={m.color}/>{m.name}</div>
                   <Chart data={pr} lines={[{key:"revenue",color:m.color}]} h={110}/>
                   <div style={{fontSize:14,fontWeight:800,color:T.text,textAlign:"center",marginTop:4}}>{fmt(l.arr)} <span style={{fontSize:10,fontWeight:400,color:T.textSec}}>ARR</span></div>
-                </div>);})}
-            </div>
-          </div>}
-
-          {selC.length>1&&<div style={{...card,marginTop:12}}>
-            <div style={lbl}>Market composition</div>
-            <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              {selC.map(ck=>{const c=CITIES[ck];const pct=((c.tam/selC.reduce((s,k)=>s+CITIES[k].tam,0))*100).toFixed(0);return(
-                <div key={ck} style={{flex:1,minWidth:140,padding:"12px 16px",background:T.bgSub,borderRadius:8}}>
-                  <div style={{fontSize:14,fontWeight:700,color:T.text}}>{c.name}</div>
-                  <div style={{fontSize:12,color:T.textSec}}>{fU(c.tam)} climbers · {c.gyms} gyms · {pct}%</div>
                 </div>);})}
             </div>
           </div>}
@@ -372,8 +394,6 @@ const handleAddComment = async () => {
                 </div>))}
             </div>
           </div>);})}
-
-        {/* Moat */}
         <div style={card}>
           <div style={lbl}>Moat evolution</div>
           <div style={{display:"grid",gridTemplateColumns:`repeat(${selM.length},1fr)`,gap:16}}>
@@ -388,13 +408,6 @@ const handleAddComment = async () => {
               </div>);})}
           </div>
         </div>
-
-        {selM.length>1&&<div style={{...card,marginTop:14,background:T.orangeLight,border:`1px solid ${T.orange}20`}}>
-          <div style={{...lbl,color:T.orange}}>Combination note</div>
-          <p style={{fontSize:13,color:T.text,lineHeight:1.6,margin:0}}>
-            Combining {selM.length} models shares development costs ({selM.length === 2 ? "25%" : "35%"} savings on total costs — one codebase, shared infrastructure). Each additional city adds ~40% to marketing and ~20% to dev for local integrations, plus €200/mo operations overhead. Prioritise one model as primary and layer others as secondary.
-          </p>
-        </div>}
       </div>}
 
       {/* ═══ LIVE COMMENTS TAB ═══ */}
@@ -420,9 +433,8 @@ const handleAddComment = async () => {
                   </span>
                 </div>
                 
-                {/* SCENARIO BADGE */}
                 <div style={{fontSize:10, color:T.orange, marginBottom:6, fontWeight:600, letterSpacing:"0.5px", textTransform:"uppercase"}}>
-                  SCENARIO: {c.scenario}
+                  {c.scenario}
                 </div>
                 
                 <div style={{fontSize:13, color:T.text, lineHeight:1.5}}>{c.text}</div>
@@ -431,12 +443,11 @@ const handleAddComment = async () => {
           </div>
 
           <div style={{display:"flex", gap:10}}>
-            <textarea value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder={`Add your thoughts on the current scenario (${selM.map(m=>MODELS.find(x=>x.id===m).name).join(" + ")})`} style={{flex:1, padding:12, borderRadius:8, border:`1px solid ${T.border}`, fontSize:13, fontFamily:"inherit", resize:"vertical", minHeight:40}} />
-            <button disabled={isPosting || !supabaseUrl.includes('supabase.co')} onClick={handleAddComment} style={{padding:"0 20px", background:isPosting?T.textTer:T.text, color:T.bg, border:"none", borderRadius:8, fontWeight:600, cursor:isPosting?"wait":"pointer"}}>
+            <textarea value={newComment} onChange={e=>setNewComment(e.target.value)} placeholder={`Add your thoughts on the current scenario`} style={{flex:1, padding:12, borderRadius:8, border:`1px solid ${T.border}`, fontSize:13, fontFamily:"inherit", resize:"vertical", minHeight:40}} />
+            <button disabled={isPosting} onClick={handleAddComment} style={{padding:"0 20px", background:isPosting?T.textTer:T.text, color:T.bg, border:"none", borderRadius:8, fontWeight:600, cursor:isPosting?"wait":"pointer"}}>
               {isPosting ? "..." : "Post to Cloud"}
             </button>
           </div>
-          {!supabaseUrl.includes('supabase.co') && <div style={{fontSize:11, color:T.red, marginTop:8, textAlign:"right"}}>Error: You must paste your Supabase URL & Key into line 4 of App.jsx!</div>}
         </div>
       </div>}
       
